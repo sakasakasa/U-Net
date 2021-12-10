@@ -6,7 +6,7 @@ import numpy as np
 from dice_loss import dice_coeff
 
 
-def eval_net(net, loader, device):
+def eval_net(net, loader, device,feature = None):
     """Evaluation without the densecrf with the dice coefficient"""
     
     net.eval()
@@ -16,7 +16,6 @@ def eval_net(net, loader, device):
     tot2 = 0
     criterion = nn.BCEWithLogitsLoss()
 
-    #print("test")
     epoch_loss = 0
     with tqdm(total=n_val, desc='Validation round', unit='batch', leave=False) as pbar:
         for batch in loader:
@@ -25,31 +24,22 @@ def eval_net(net, loader, device):
             true_masks = true_masks.to(device=device, dtype=mask_type)
 
             with torch.no_grad():
-                #print("test")
                 mask_pred = net(imgs)
-                if net.up2.conv.p== True:
-                   net.up2.conv.p = False
-
-                #print("test!")
-                #print(mask_pred.sum())
-                feature1 = net.up4.conv.feature 
+            
+            if feature is not None:
+                feature.conv.p = False
+            
             if net.n_classes > 1:
                 tot += F.cross_entropy(mask_pred, true_masks).item()
             else:
-                #print("mask",mask_pred.sum())
-                #print(mask_pred)
                 pred = torch.sigmoid(mask_pred)
-                #print(pred.sum())
                 pred = (pred > 0.5).float()
-                #print(pred.sum())
                 x_dummy = np.zeros(pred.shape)#((16,1024,9,12))
                 x_dummy = x_dummy.astype(np.float32)
                 x_tensor = torch.from_numpy(x_dummy).clone().cuda()
                 tot += dice_coeff(pred, true_masks).item()
                 loss = criterion(mask_pred, true_masks)
-                #print(loss,pred.sum())
                 epoch_loss += loss.item()
-                #print(dice_coeff(pred, true_masks).item())
             pbar.update()
     
     net.train()

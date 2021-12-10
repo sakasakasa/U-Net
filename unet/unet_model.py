@@ -20,8 +20,8 @@ class UNet(nn.Module):
         self.down4 = Down(512, 1024 // factor,img_h//16,img_w//16)#,batchnorm = False)
         self.down5 = Down(1024, 1024 // factor,img_h//32,img_w//32)
         self.down6 = Down(1024,1024  // factor)
-        self.up7 = Up(1024, 1024 // factor, bilinear,conv_channels = False)
-        self.up6 = Up(1024, 1024 // factor, bilinear,conv_channels = False)
+        self.up7 = Up(1024, 1024 // factor, bilinear,conv_channels = 1536)
+        self.up6 = Up(1024, 1024 // factor, bilinear,conv_channels = 1536)
         self.up1 = Up(1024, 512 // factor, img_h = img_h//8,img_w = img_w//8, bilinear = bilinear)#,batchnorm = False)
         self.up2 = Up(512, 256 // factor, img_h = img_h//4,img_w = img_w//4,bilinear = bilinear)#,batchnorm = False)
         self.up3 = Up(256, 128 // factor, img_h = img_h//2,img_w = img_w//2,bilinear = bilinear)
@@ -94,24 +94,16 @@ class UNet(nn.Module):
         x_tensor5 = torch.from_numpy(x_dummy5).clone().cuda()
 
         x = self.up6(x_tensor,x5)
-        #print("5",x5.sum())
         if self.scale5 is not None:
           x5 *= self.scale5
-        x = self.up1(x5,x4)#x_tensor2)#x4)
+        x = self.up1(x,x4)#x_tensor2)#x4)
         if self.scale4 is not None:
           x *= self.scale4
         x = self.up2(x, x3)#x_tensor3)#x3)
-        #y = x.cpu()
-        #print("5",np.where(y>0,1,0).sum())
-        #print("5",x.sum())
         x = self.up3(x, x2)#x_tensor4)#x2)
-        #print("5-up3",x.sum())
         x = self.up4(x, x1)#x_tensor5)#x1)
-        #print("5-up4",x.abs().sum())
         logits = self.outc(x)
         y = logits.cpu()
-        #print("5",np.where(y>0,1,0).sum())
-        #print("5",logits.abs().sum())
         return logits #if not self.distillation else x
       elif self.depth == 4:
         x1 = self.inc(x)
@@ -119,7 +111,6 @@ class UNet(nn.Module):
         x3 = self.down2(x2)
         x4 = self.down3(x3)
         x5 = self.down4(x4)
-        #print("4",x5.shape)
         x_dummy = np.zeros(x5.shape)#((16,1024,9,12))
         x_dummy = x_dummy.astype(np.float32)
         x_tensor = torch.from_numpy(x_dummy).clone().cuda()
@@ -127,43 +118,24 @@ class UNet(nn.Module):
         if self.scale4 is not None:
           x *= self.scale4
         x = self.up2(x, x3)
-        #y = x.cpu()
-        #print("4",np.where(y>0,1,0).sum())
-        
-        #print("4",x.sum())
         x = self.up3(x, x2)
-        
-        #for i in self.up3.conv1.parameters():
-        #  print(i)
-        #  break
-        #print("4-up3",x.sum())
         x = self.up4(x, x1)
-        #print("4-up4",x.abs().sum())
         logits = self.outc(x)
         y = logits.cpu()
-        #print("4",np.where(y>0,1,0).sum())
-        #print("4",logits.abs().sum())
         return logits #if not self.distillation else  x
       elif self.depth == 3:
         x1 = self.inc(x)
         x2 = self.down1(x1)
         x3 = self.down2(x2)
         x4 = self.down3(x3)
-        #print("3",x3.sum(),x2.sum())
         x_dummy = np.zeros(x4.shape)#((16,1024,9,12))
         x_dummy = x_dummy.astype(np.float32)
         x_tensor = torch.from_numpy(x_dummy).clone().cuda()
         x = self.up2(x_tensor, x3)
-        #print("3",x.sum())
-
         x = self.up3(x, x2)
-        #print("3-up3",x.sum())
         x = self.up4(x, x1)
-        #print("3-up4",x.abs().sum())
         logits = self.outc(x)
-       
         y = logits.cpu()
-        #print("3",np.where(y>0,1,0).sum())
         return logits #if not self.distillation else  x
       else:
         x1 = self.inc(x)

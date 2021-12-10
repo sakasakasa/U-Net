@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import logging
 
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -62,51 +63,22 @@ class DoubleConv(nn.Module):
             nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1), 
             nn.ReLU(inplace=True) 
           ) 
-        self.test = None
-        self.p = p
-        self.feature = None
-        self.train_mean = None
         self.depth = 0
-        self.feature3 = None
-        self.feature5 = None
-        self.feature3_test = None
-        self.feature5_test = None
+        self.p = False
+        self.p1 = False
+        self.p2 = False
+        self.p3 = False
+        self.p4 = False
+        self.feature = ([[],[],[],[],[],[]])#[self.feature3,self.feature4,self.feature5,self.feature6,self.feature7]
     def forward(self, x):
-        """ 
-        if self.p:
-           if not self.test:
-            print(np.mean(x.abs().cpu().detach().numpy(),axis = (0,2,3)))
-        
-        if self.p:
-            #print(np.mean(x.cpu().detach().numpy(),axis = (0,2,3)))
-            print("weight",self.conv1[0].weight.abs().mean(axis = [0,2,3]))
-        """
+        if self.p1:
+              self.feature  = np.concatenate([self.feature,x.cpu().detach().numpy()]) if len(self.feature)!=0 else x.cpu().detach().numpy()
+ 
         out = self.conv1(x)
-        #if self.p:
-         #    self.train_mean = out.mean(axis = [0,2,3])
-         
-        if self.p:
-           if not self.test:
-            print(np.mean(out.abs().cpu().detach().numpy(),axis = (0,2,3)))
-            if self.depth == 3:
-              self.feature3  = np.std(out.cpu().detach().numpy(),axis = (0,2,3))
-            elif self.depth == 5:
-              self.feature5  = np.std(out.cpu().detach().numpy(),axis = (0,2,3))
-           else:
-            #print(np.std(out.cpu().detach().numpy(),axis = (0,2,3)))
-            if self.depth == 3:
-              self.feature3_test  = np.std(out.cpu().detach().numpy(),axis = (0,2,3))
-            elif self.depth == 5:
-              self.feature5_test  = np.std(out.cpu().detach().numpy(),axis = (0,2,3))
-            #self.feature = np.std(out.cpu().detach().numpy(),axis = (0,2,3))
-        
         out = self.conv3(out)
-        
-        if self.p:
-           #print(np.sqrt(self.conv3[0].running_var.cpu()))
-           self.var = np.sqrt(self.conv3[0].running_var.cpu())
-           self.mean = (self.conv3[0].running_mean.cpu())
-       
+        if self.p2:
+              self.feature  = np.concatenate([self.feature,out.cpu().detach().numpy()]) if len(self.feature)!=0 else out.cpu().detach().numpy()
+
         """ 
         if self.test is not None:
           mask = self.test*np.ones((out.shape[0],out.shape[1],out.shape[2],out.shape[3]))
@@ -115,22 +87,13 @@ class DoubleConv(nn.Module):
           out = out*mask_tensor.float()
         """  
         out = self.conv2(out)
-        """
-        if self.p:
-           if not self.test:
-            print(np.std(out.cpu().detach().numpy(),axis = (0,2,3)))
-            if self.depth == 3:
-              self.feature3  = np.mean(out.cpu().detach().numpy(),axis = (0,2,3))
-            elif self.depth == 5:
-              self.feature5  = np.mean(out.cpu().detach().numpy(),axis = (0,2,3))
-           else:
-            print(np.std(out.cpu().detach().numpy(),axis = (0,2,3)))
-            if self.depth == 3:
-              self.feature3_test  = np.mean(out.cpu().detach().numpy(),axis = (0,2,3))
-            elif self.depth == 5:
-              self.feature5_test  = np.mean(out.cpu().detach().numpy(),axis = (0,2,3))
-        """
         out = self.conv4(out)
+        if self.p3:
+              self.feature  = np.concatenate([self.feature,out.cpu().detach().numpy()]) if len(self.feature)!=0 else out.cpu().detach().numpy()
+        if self.p4: 
+            print(out)
+        if self.p:
+            self.feature[self.depth] = out.cpu().detach().numpy()
         
         return out
 
@@ -150,17 +113,18 @@ class Down(nn.Module):
 
 class Up(nn.Module):
     """Upscaling then double conv"""
-    def __init__(self, in_channels, out_channels, bilinear=True,conv_channels = True, mid_channels = None,img_h = 1,img_w = 1,batchnorm = True, p = False):
+    def __init__(self, in_channels, out_channels, bilinear=True,conv_channels = 0, mid_channels = None,img_h = 1,img_w = 1,batchnorm = True, p = False):
         super().__init__()
-        in_channels2 = in_channels if conv_channels else 1536
+        in_channels2 = in_channels if conv_channels == 0 else conv_channels
         self.conv1 = nn.Conv2d(in_channels,in_channels//2, kernel_size=3, padding=1)
-        self.conv2 = nn.Sequential(
+        self.norm = nn.Sequential(
             nn.BatchNorm2d(in_channels//2),
             #nn.InstanceNorm2d(mid_channels),
             #nn.LayerNorm([mid_channels,img_h,img_w]),
             nn.ReLU(inplace=True)
           )
         self.p = False
+        self.scale = 1
         # if bilinear, use the normal convolutions to reduce the number of channels
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
@@ -177,11 +141,10 @@ class Up(nn.Module):
         diffX = x2.size()[3] - x1.size()[3]
         x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
                         diffY // 2, diffY - diffY // 2])
-        #print(x2.shape,self.conv1(x1).shape)
         # if you have padding issues, see
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
-        x = torch.cat([x2, (self.conv1(x1))], dim=1)
+        x = torch.cat([x2, (self.conv1(x1))*self.scale], dim=1)
         return self.conv(x)
 
 
