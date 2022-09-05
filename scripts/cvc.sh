@@ -1,19 +1,18 @@
-#!/bin/sh
+#!/bin/bash
+#PJM -g gu15
+#PJM -L rscgrp=share
+#PJM -L gpu=1
+#PJM -L elapse=8:00:00
+#PJM --fs /work,/data
+#PJM -j 
+#PJM -N U-Net-lipschitz-BN-up4-0.5-830-inc
 
-#PBS -q h-regular
-#PBS -l select=1
-#PBS -W group_list=gk36
-#PBS -l walltime=48:00:00
-
-if [ -f ~/.bashrc ]; then
-        . ~/.bashrc
-fi
-
-conda init
-conda activate /lustre/gk36/k36062/sandbox/envs
+module load cuda/11.1
 module load pytorch/1.8.1
-export PYTHONPATH="${HOME}/sandbox/pytorch181/lib/python3.9/site-packages"
+module load cudnn/8.1.0
+module load nccl/2.8.4
+source $PYTORCH_DIR/bin/activate
 
-cd /lustre/gk36/k36062/experiment/Pytorch-UNet-master-CVC
-#python train.py --e 300 --s 0.5 --b 8
-python train.py
+cd /work/gk36/k36062/k36062/experiment/Pytorch-UNet-master-Slim
+python train.py --e 100 --s 0.6 --b 8 --g 0.5
+#python train.py
