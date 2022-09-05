@@ -6,26 +6,26 @@ from .unet_parts import *
 
 
 class UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=True, depth = 5,img_h = None,img_w = None,gamma = 1.0):
+    def __init__(self, n_channels, n_classes, bilinear=True, depth = 5,img_h = None,img_w = None,gamma = 1.0,IN = True):
         super(UNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
 
-        self.inc = DoubleConv(n_channels, 64,img_h = img_h,img_w = img_w)
-        self.down1 = Down(64, 128,img_h//2,img_w//2,gamma = gamma)
-        self.down2 = Down(128, 256,img_h//4,img_w//4,gamma = gamma)
-        self.down3 = Down(256, 512,img_h//8,img_w//8,gamma = gamma)
+        self.inc = DoubleConv(n_channels, 64,img_h = img_h,img_w = img_w,IN = IN)
+        self.down1 = Down(64, 128,img_h//2,img_w//2,gamma = gamma,IN = IN)
+        self.down2 = Down(128, 256,img_h//4,img_w//4,gamma = gamma,IN = IN)
+        self.down3 = Down(256, 512,img_h//8,img_w//8,gamma = gamma,IN = IN)
         factor = 1
-        self.down4 = Down(512, 1024 // factor,img_h//16,img_w//16,gamma = gamma)
-        self.down5 = Down(1024, 1024 // factor,img_h//32,img_w//32,gamma = gamma)
-        self.down6 = Down(1024,1024  // factor,gamma = gamma)
-        self.up7 = Up(1024, 1024 // factor, bilinear,conv_channels = 1024,gamma = gamma)
-        self.up6 = Up(1024, 1024 // factor, bilinear,conv_channels = 512,gamma = gamma)
-        self.up1 = Up(1024, 512 // factor, img_h = img_h//8,img_w = img_w//8, bilinear = bilinear,conv_channels = 512,gamma =gamma)
-        self.up2 = Up(512, 256 // factor, img_h = img_h//4,img_w = img_w//4,bilinear = bilinear,conv_channels = 256,gamma = gamma)
-        self.up3 = Up(256, 128 // factor, img_h = img_h//2,img_w = img_w//2,bilinear = bilinear,conv_channels = 128,gamma = gamma)
-        self.up4 = Up(128, 64, img_h = img_h,img_w = img_w,bilinear = bilinear ,conv_channels = 64,gamma = gamma)
+        self.down4 = Down(512, 1024 // factor,img_h//16,img_w//16,gamma = gamma,IN = IN)
+        self.down5 = Down(1024, 1024 // factor,img_h//32,img_w//32,gamma = gamma, IN = IN)
+        self.down6 = Down(1024,1024  // factor,gamma = gamma, IN = IN)
+        self.up7 = Up(1024, 1024 // factor, bilinear,conv_channels = 1024,gamma = gamma, IN = IN)
+        self.up6 = Up(1024, 1024 // factor, bilinear,conv_channels = 512,gamma = gamma, IN = IN)
+        self.up1 = Up(1024, 512 // factor, img_h = img_h//8,img_w = img_w//8, bilinear = bilinear,conv_channels = 512,gamma =gamma, IN = IN)
+        self.up2 = Up(512, 256 // factor, img_h = img_h//4,img_w = img_w//4,bilinear = bilinear,conv_channels = 256,gamma = gamma, IN = IN)
+        self.up3 = Up(256, 128 // factor, img_h = img_h//2,img_w = img_w//2,bilinear = bilinear,conv_channels = 128,gamma = gamma, IN = IN)
+        self.up4 = Up(128, 64, img_h = img_h,img_w = img_w,bilinear = bilinear ,conv_channels = 64,gamma = gamma, IN = IN)
         self.outc = OutConv(64, n_classes)
         self.depth = depth
         self.img_h = img_h

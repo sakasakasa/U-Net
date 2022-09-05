@@ -9,7 +9,7 @@ import logging
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
 
-    def __init__(self, in_channels, out_channels, mid_channels=None,batchnorm = True, gamma = 1.0, img_h =1,img_w = 1):
+    def __init__(self, in_channels, out_channels, mid_channels=None,batchnorm = True, gamma = 1.0, img_h =1,img_w = 1, IN = True):
         super().__init__()
         self.gamma = gamma
         if not mid_channels:
@@ -19,7 +19,7 @@ class DoubleConv(nn.Module):
           self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1),
             #nn.InstanceNorm2d(mid_channels),
-            nn.BatchNorm2d(mid_channels,affine = False),
+            nn.BatchNorm2d(mid_channels,affine = False) if IN == False else nn.InstanceNorm2d(mid_channels),
            )
           
           #self.conv1 = nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1)
@@ -27,14 +27,14 @@ class DoubleConv(nn.Module):
             #nn.BatchNorm2d(mid_channels,affine = False),
             #nn.InstanceNorm2d(mid_channels),
             #nn.LayerNorm([mid_channels,img_h,img_w]),
-            #nn.ReLU(inplace=True)
+           # nn.ReLU(inplace=True)
           )
           self.relu = nn.ReLU(inplace=True)
         if True:#batchnorm:
           self.conv2 = nn.Sequential(
             nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1),
             #nn.InstanceNorm2d(out_channels),
-            nn.BatchNorm2d(out_channels,affine = False),
+            nn.BatchNorm2d(out_channels,affine = False)if IN == False else nn.InstanceNorm2d(mid_channels),
            )
           self.conv4 = nn.Sequential(
             #nn.BatchNorm2d(out_channels),
@@ -67,11 +67,11 @@ class DoubleConv(nn.Module):
 class Down(nn.Module):
     """Downscaling with maxpool then double conv"""
 
-    def __init__(self, in_channels, out_channels,img_h=1 , img_w=1,batchnorm = True,gamma = 1.0):
+    def __init__(self, in_channels, out_channels,img_h=1 , img_w=1,batchnorm = True,gamma = 1.0, IN = True):
         super().__init__()
         self.maxpool_conv = nn.Sequential(
             nn.MaxPool2d(2),
-            DoubleConv(in_channels, out_channels,img_h=img_h,img_w=img_w,batchnorm = batchnorm,gamma = gamma)
+            DoubleConv(in_channels, out_channels,img_h=img_h,img_w=img_w,batchnorm = batchnorm,gamma = gamma, IN = IN)
         )
 
     def forward(self, x):
@@ -80,7 +80,7 @@ class Down(nn.Module):
 
 class Up(nn.Module):
     """Upscaling then double conv"""
-    def __init__(self, in_channels, out_channels, bilinear=True,conv_channels = 0, mid_channels = None,img_h = 1,img_w = 1,batchnorm = True,gamma = 1.0):
+    def __init__(self, in_channels, out_channels, bilinear=True,conv_channels = 0, mid_channels = None,img_h = 1,img_w = 1,batchnorm = True,gamma = 1.0, IN = True):
         super().__init__()
         in_channels2 = in_channels if conv_channels == 0 else conv_channels
         self.conv1 = nn.Conv2d(in_channels,out_channels, kernel_size=3, padding=1)
@@ -93,10 +93,10 @@ class Up(nn.Module):
         # if bilinear, use the normal convolutions to reduce the number of channels
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-            self.conv = DoubleConv(out_channels, out_channels, in_channels // 2,img_h = img_h,img_w = img_w,batchnorm = batchnorm,gamma = gamma)
+            self.conv = DoubleConv(out_channels, out_channels, in_channels // 2,img_h = img_h,img_w = img_w,batchnorm = batchnorm,gamma = gamma, IN = IN)
         else:
             self.up = nn.ConvTranspose2d(in_channels , in_channels // 2, kernel_size=2, stride=2)
-            self.conv = DoubleConv(in_channels, out_channels,mid_channels = None,img_h = img_h,img_w = img_w,batchnorm = batchnorm,gamma = gamma)
+            self.conv = DoubleConv(in_channels, out_channels,mid_channels = None,img_h = img_h,img_w = img_w,batchnorm = batchnorm,gamma = gamma, IN = IN)
 
 
     def forward(self, x1, x2):

@@ -170,6 +170,7 @@ def get_args():
                         help='gamma')
     parser.add_argument('-v', '--validation', dest='val', type=float, default=10.0,
                         help='Percent of the data that is used as validation (0-100)')
+    parser.add_argument('--BN', action='store_false', dest = "BN")
 
     return parser.parse_args()
 
@@ -213,7 +214,7 @@ if __name__ == '__main__':
     try:
       for i in range(1):
         #depth_list = [i+2]
-        net = UNet(n_channels=3, n_classes=1, bilinear=True,depth = 5,img_h = size[1],img_w = size[2],gamma = args.gamma) 
+        net = UNet(n_channels=3, n_classes=1, bilinear=True,depth = 5,img_h = size[1],img_w = size[2],gamma = args.gamma, IN = args.BN) 
         net.to(device=device)
         new_result =  train_net(net=net,
                   epochs=args.epochs,
