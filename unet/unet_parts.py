@@ -12,12 +12,13 @@ class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, mid_channels=None,batchnorm = True, gamma = 1.0, img_h =1,img_w = 1, IN = True):
         super().__init__()
         self.gamma = gamma
+        self.IN = IN
         if not mid_channels:
             mid_channels = out_channels
           
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(mid_channels,affine = False) if IN == False else nn.InstanceNorm2d(mid_channels),
+            nn.BatchNorm2d(mid_channels,affine = True) if IN == False else nn.InstanceNorm2d(mid_channels),
         )
           
         self.relu = nn.ReLU(inplace=False)
@@ -29,14 +30,15 @@ class DoubleConv(nn.Module):
     def forward(self, x):
         x = x.requires_grad_()
         out = self.conv1(x)
-        out = out.clone()* self.gamma
+        out = out* self.gamma
         self.x = x
         self.sigma = out.std(axis = (0,2,3))
         self.out = out
-        out = self.relu(out)
         self.size = out[:,0,:,:].flatten().shape[0]
-        #self.scaled =(out-self.conv3[0].running_mean)/np.sqrt(self.conv3[0].running_var)
-        out = out.requires_grad_(True)
+        #print(out.shape)
+        #print(torch.broadcast_to(self.conv1[1].weight[None,:,None,None],out.shape).shape,self.conv1[1].bias.shape)
+        self.scaled =(out-torch.broadcast_to(self.conv1[1].bias[None,:,None,None],out.shape))/(torch.broadcast_to(self.conv1[1].weight[None,:,None,None],out.shape)) if self.IN == False else self.out
+        out = self.relu(out)
         out = self.conv2(out)
         out *= self.gamma
         out = self.relu(out)

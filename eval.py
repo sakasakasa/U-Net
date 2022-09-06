@@ -21,6 +21,7 @@ def eval_net(net, loader, device,feature = None,print_slim = False):
     with tqdm(total=n_val, desc='Validation round', unit='batch', leave=False) as pbar:
         lip_list = []
         term1_list = []
+        sigma_list = []
         for batch in loader:
             imgs, true_masks = batch['image'], batch['mask']
             imgs = imgs.to(device=device, dtype=torch.float32)
@@ -48,13 +49,16 @@ def eval_net(net, loader, device,feature = None,print_slim = False):
                 loss = criterion(mask_pred, true_masks)
                 lip = torch.norm(torch.autograd.grad([loss],[net.up3.conv.x],retain_graph = True)[0][0,0,:,:])
                 term1 = torch.norm(torch.autograd.grad([loss],[net.up3.conv.out],retain_graph = True)[0][0,0,:,:])
-                lip_list.append(lip.item())
-                term1_list.append(term1.item())
+                #sigma_list.append(net.up3.conv.sigma[0].item())
+
+                lip_list.append(lip.item()**2)
+                term1_list.append(term1.item()**2)
                 epoch_loss += loss.item()
             pbar.update()
     if print_slim:
       print("lipschitz_eval=",mean(lip_list))
-      print("term1_eval=",mean(term1_list))
+      #print("term1_eval=",mean(term1_list))
+      #print("sigma_eval=",mean(sigma_list))
     net.train()
     """
     #print("train") 

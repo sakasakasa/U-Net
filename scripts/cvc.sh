@@ -5,7 +5,7 @@
 #PJM -L elapse=8:00:00
 #PJM --fs /work,/data
 #PJM -j 
-#PJM -N U-Net-lipschitz-BN-up4-0.5-830-inc
+#PJM -N U-Net-IN-0.2
 
 module load cuda/11.1
 module load pytorch/1.8.1
@@ -14,5 +14,5 @@ module load nccl/2.8.4
 source $PYTORCH_DIR/bin/activate
 
 cd /work/gk36/k36062/k36062/experiment/Pytorch-UNet-master-Slim
-python train.py --e 100 --s 0.6 --b 8 --g 0.5
+python train.py --e 100 --s 0.6 --b 8 --g 0.2
 #python train.py

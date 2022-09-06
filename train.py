@@ -37,7 +37,8 @@ def train_net(net,
               val_percent=0.2,
               save_cp=True,
               img_scale=0.5,
-              gamma=1.0
+              gamma=1.0,
+              IN = True
               ):
 
     dataset = BasicDataset(dir_img, dir_mask, img_scale)
@@ -106,11 +107,11 @@ def train_net(net,
                   lip = torch.norm(torch.autograd.grad([loss],[net.up3.conv.x],retain_graph = True)[0][0,0,:,:])
                   term1 = torch.norm(torch.autograd.grad([loss],[net.up3.conv.out],retain_graph = True)[0][0,0,:,:])
                   term2 = (torch.autograd.grad([loss],[net.up3.conv.out],retain_graph = True)[0][0,0,:,:]).sum()
-                  term3 = torch.dot(torch.flatten(torch.autograd.grad([loss],[net.up3.conv.out],retain_graph = True)[0][0,0,:,:]),torch.flatten(net.up3.conv.out[0,0,:,:]))
+                  term3 = torch.dot(torch.flatten(torch.autograd.grad([loss],[net.up3.conv.out],retain_graph = True)[0][0,0,:,:]),torch.flatten(net.up3.conv.scaled[0,0,:,:]))
                   size = net.up3.conv.size
-    
+                  gamma2 = net.up3.conv.conv1[1].weight[0] if not IN else gamma
                   #print(lip,term1,net.up4.conv.sigma.mean().item(),term2.item(),term3.item())
-                  sup = ((term1**2-(term2**2)*(2/size-1/(size*size))-term3**2/size) *gamma*gamma/net.up3.conv.sigma/net.up3.conv.sigma).mean()
+                  sup = ((term1**2-(term2**2)*(2/size-1/(size*size))-term3**2/size) *gamma2*gamma2/net.up3.conv.sigma/net.up3.conv.sigma).mean()
                   lip_list[i].append(lip.item()**2)
                   term1_list[i].append(term1.item()**2)
                   term2_list[i].append(term2.item()**2)
@@ -210,8 +211,10 @@ if __name__ == '__main__':
                   device=device,
                   img_scale=args.scale,
                   val_percent=args.val / 100,
-                  gamma = args.gamma
+                  gamma = args.gamma,
+                  IN = args.BN
                   )
+    
         feature_list = [net.up7,net.up6,net.up1,net.up2,net.up3,net.up4]
         feature_down = [net.down1,net.down2,net.down3,net.down4,net.down5,net.down6]
         def feature_func(num):
