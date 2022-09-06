@@ -14,52 +14,32 @@ class DoubleConv(nn.Module):
         self.gamma = gamma
         if not mid_channels:
             mid_channels = out_channels
-        if True:#batchnorm:
           
-          self.conv1 = nn.Sequential(
+        self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1),
-            #nn.InstanceNorm2d(mid_channels),
             nn.BatchNorm2d(mid_channels,affine = False) if IN == False else nn.InstanceNorm2d(mid_channels),
-           )
+        )
           
-          #self.conv1 = nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1)
-          self.conv3 = nn.Sequential(
-            #nn.BatchNorm2d(mid_channels,affine = False),
-            #nn.InstanceNorm2d(mid_channels),
-            #nn.LayerNorm([mid_channels,img_h,img_w]),
-           # nn.ReLU(inplace=True)
-          )
-          self.relu = nn.ReLU(inplace=True)
-        if True:#batchnorm:
-          self.conv2 = nn.Sequential(
+        self.relu = nn.ReLU(inplace=False)
+        self.conv2 = nn.Sequential(
             nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1),
-            #nn.InstanceNorm2d(out_channels),
             nn.BatchNorm2d(out_channels,affine = False)if IN == False else nn.InstanceNorm2d(mid_channels),
-           )
-          self.conv4 = nn.Sequential(
-            #nn.BatchNorm2d(out_channels),
-            #nn.InstanceNorm2d(out_channels),
-            #nn.LayerNorm([out_channels,img_h,img_w]),
-            #nn.ReLU(inplace=True)
-          )
+        )
 
     def forward(self, x):
         x = x.requires_grad_()
         out = self.conv1(x)
-        out *= self.gamma
+        out = out.clone()* self.gamma
         self.x = x
         self.sigma = out.std(axis = (0,2,3))
-        #self.jacobi = torch.stack([torch.autograd.grad([y[i].sum()], [x], retain_graph=True, create_graph=True, allow_unused = True)[0] for i in range(y.size(0))], dim=-1).squeeze().t()
-        out = self.conv3(out)
         self.out = out
         out = self.relu(out)
         self.size = out[:,0,:,:].flatten().shape[0]
         #self.scaled =(out-self.conv3[0].running_mean)/np.sqrt(self.conv3[0].running_var)
         out = out.requires_grad_(True)
         out = self.conv2(out)
-        #out *= self.gamma
-        #self.x = x
-        out = self.conv4(out)
+        out *= self.gamma
+        out = self.relu(out)
         #self.sigma = out.std(axis = (0,2,3))
         #self.out = out
         return out

@@ -84,7 +84,6 @@ def train_net(net,
             for batch in train_loader:
                 optimizer.zero_grad()
                 imgs = batch['image']
-                #print(imgs.requires_grad)
                 true_masks = batch['mask']
                 assert imgs.shape[1] == net.n_channels, \
                     f'Network has been defined with {net.n_channels} input channels, ' \
@@ -92,17 +91,14 @@ def train_net(net,
                     'the images are loaded correctly.'
 
                 imgs = imgs.to(device=device, dtype=torch.float32)
-                #print(imgs.requires_grad)
                 mask_type = torch.float32 if net.n_classes == 1 else torch.long
                 true_masks = true_masks.to(device=device, dtype=mask_type)
                 
                 for i in range(len(depth_list)):
-                  #print("depth = {}".format(depth_list[i]))
                   net.depth = depth_list[i]
                   masks_pred = net(imgs)
  
                   loss = criterion(masks_pred, true_masks)
-                  #print(imgs.requires_grad)
                   #writer.add_scalar('Loss/train', loss.item(), global_step)
 
                   pbar.set_postfix(**{'loss (batch)': loss.item()})
@@ -122,31 +118,22 @@ def train_net(net,
                   sup_list[i].append(sup.item())
                   sigma_list[i].append(net.up3.conv.sigma[0].item())
 
-                """
-                if epoch == epochs-1:
-                    print("lipschitz = {}".format(mean(lip_list[0])))
-                    print("term1 = {}".format(mean(term1_list[0])))
-                    print("term2 = {}".format(mean(term2_list[0])))
-                    print("term3 = {}".format(mean(term3_list[0])))
-                    print("sup = {}".format(mean(sup_list[0])))
-                """
                 optimizer.step()
                 pbar.update(imgs.shape[0])
                 global_step += 1
 
         val_list = np.array([])
-        if True:#epoch %25 ==0:
+        if epoch == epochs-1:
                     print("lipschitz = {}".format(mean(lip_list[0])))
                     print("term1 = {}".format(mean(term1_list[0])))
                     print("term2 = {}".format(mean(term2_list[0])))
                     print("term3 = {}".format(mean(term3_list[0])))
                     print("sup = {}".format(mean(sup_list[0])))
-                    #print("sigma=",net.up3.conv.sigma.mean(),net.up3.conv.sigma.var())
 
         for j in range(len(depth_list_all)):
               net.depth = depth_list_all[j]
-              print((criterion(masks_pred,true_masks)).requires_grad)
-              val_score,val_loss = eval_net(net, val_loader, device)
+              print("depth:{}".format(net.depth))
+              val_score,val_loss = eval_net(net, val_loader, device, print_slim = True if epoch == epochs-1 else False)
               val_list = np.append(val_list,val_score)
               logging.info('Validation Dice Coeff: {}'.format(val_score))  
     #writer.close()
