@@ -109,7 +109,7 @@ def train_net(net,
                   term2 = (torch.autograd.grad([loss],[net.up3.conv.out],retain_graph = True)[0][0,0,:,:]).sum()
                   term3 = torch.dot(torch.flatten(torch.autograd.grad([loss],[net.up3.conv.out],retain_graph = True)[0][0,0,:,:]),torch.flatten(net.up3.conv.scaled[0,0,:,:]))
                   size = net.up3.conv.size
-                  gamma2 = net.up3.conv.conv1[1].weight[0] if not IN else gamma
+                  gamma2 = net.up3.conv.bn1.weight[0] if not IN else gamma
                   #print(lip,term1,net.up4.conv.sigma.mean().item(),term2.item(),term3.item())
                   sup = ((term1**2-(term2**2)*(2/size-1/(size*size))-term3**2/size) *gamma2*gamma2/net.up3.conv.sigma/net.up3.conv.sigma).mean()
                   lip_list[i].append(lip.item()**2)
@@ -118,6 +118,7 @@ def train_net(net,
                   term3_list[i].append(term3.item()**2)
                   sup_list[i].append(sup.item())
                   sigma_list[i].append(net.up3.conv.sigma[0].item())
+                  #print(net.up3.bn1.running_var)
 
                 optimizer.step()
                 pbar.update(imgs.shape[0])
@@ -125,16 +126,19 @@ def train_net(net,
 
         val_list = np.array([])
         if epoch == epochs-1:
-                    print("lipschitz = {}".format(mean(lip_list[0])))
-                    print("term1 = {}".format(mean(term1_list[0])))
-                    print("term2 = {}".format(mean(term2_list[0])))
-                    print("term3 = {}".format(mean(term3_list[0])))
-                    print("sup = {}".format(mean(sup_list[0])))
-
+            for i in range(len(depth_list)):
+                    print("depth = {}".format(depth_list[i]))
+                    print("lipschitz = {}".format(mean(lip_list[i])))
+                    print("term1 = {}".format(mean(term1_list[i])))
+                    print("term2 = {}".format(mean(term2_list[i])))
+                    print("term3 = {}".format(mean(term3_list[i])))
+                    print("sup = {}".format(mean(sup_list[i])))
+                    print("sigma = {}".format(mean(sigma_list[i])))
+            print("evaluation starts")
         for j in range(len(depth_list_all)):
               net.depth = depth_list_all[j]
               print("depth:{}".format(net.depth))
-              val_score,val_loss = eval_net(net, val_loader, device, print_slim = True if epoch == epochs-1 else False)
+              val_score,val_loss = eval_net(net, val_loader, device, print_slim = True if epoch == epochs-1 else False, gamma = gamma,IN = IN)
               val_list = np.append(val_list,val_score)
               logging.info('Validation Dice Coeff: {}'.format(val_score))  
     #writer.close()

@@ -18,32 +18,30 @@ class DoubleConv(nn.Module):
           
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(mid_channels,affine = True) if IN == False else nn.InstanceNorm2d(mid_channels),
         )
-          
+        self.bn1 = nn.BatchNorm2d(mid_channels,affine = True) if IN == False else nn.InstanceNorm2d(mid_channels)  
         self.relu = nn.ReLU(inplace=False)
         self.conv2 = nn.Sequential(
             nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels,affine = False)if IN == False else nn.InstanceNorm2d(mid_channels),
         )
+        self.bn2 = nn.BatchNorm2d(out_channels,affine = True)if IN == False else nn.InstanceNorm2d(out_channels)
 
     def forward(self, x):
         x = x.requires_grad_()
         out = self.conv1(x)
-        out = out* self.gamma
         self.x = x
         self.sigma = out.std(axis = (0,2,3))
-        self.out = out
+        #self.out = out
         self.size = out[:,0,:,:].flatten().shape[0]
-        #print(out.shape)
-        #print(torch.broadcast_to(self.conv1[1].weight[None,:,None,None],out.shape).shape,self.conv1[1].bias.shape)
-        self.scaled =(out-torch.broadcast_to(self.conv1[1].bias[None,:,None,None],out.shape))/(torch.broadcast_to(self.conv1[1].weight[None,:,None,None],out.shape)) if self.IN == False else self.out
+        out = self.bn1(out)
+        self.out = out
+        self.scaled =(out-torch.broadcast_to(self.bn1.bias[None,:,None,None],out.shape))/(torch.broadcast_to(self.bn1.weight[None,:,None,None],out.shape)) if self.IN == False else self.out
+        out = out* self.gamma if self.IN else out
         out = self.relu(out)
         out = self.conv2(out)
-        out *= self.gamma
+        out = self.bn2(out)
+        out = out* self.gamma if self.IN else out
         out = self.relu(out)
-        #self.sigma = out.std(axis = (0,2,3))
-        #self.out = out
         return out
 
 class Down(nn.Module):
