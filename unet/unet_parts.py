@@ -34,9 +34,10 @@ class DoubleConv(nn.Module):
         #self.out = out
         self.size = out[:,0,:,:].flatten().shape[0]
         out = self.bn1(out)
-        self.out = out
-        self.scaled =(out-torch.broadcast_to(self.bn1.bias[None,:,None,None],out.shape))/(torch.broadcast_to(self.bn1.weight[None,:,None,None],out.shape)) if self.IN == False else self.out
+        #self.out = out
+        self.scaled =(out-torch.broadcast_to(self.bn1.bias[None,:,None,None],out.shape))/(torch.broadcast_to(self.bn1.weight[None,:,None,None],out.shape)) if self.IN == False else out
         out = out* self.gamma if self.IN else out
+        self.out = out
         out = self.relu(out)
         out = self.conv2(out)
         out = self.bn2(out)

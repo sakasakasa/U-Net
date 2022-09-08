@@ -12,7 +12,7 @@ class UNet(nn.Module):
         self.n_classes = n_classes
         self.bilinear = bilinear
 
-        self.inc = DoubleConv(n_channels, 64,img_h = img_h,img_w = img_w,IN = IN)
+        self.inc = DoubleConv(n_channels, 64,img_h = img_h,img_w = img_w,gamma = gamma,IN = IN)
         self.down1 = Down(64, 128,img_h//2,img_w//2,gamma = gamma,IN = IN)
         self.down2 = Down(128, 256,img_h//4,img_w//4,gamma = gamma,IN = IN)
         self.down3 = Down(256, 512,img_h//8,img_w//8,gamma = gamma,IN = IN)
