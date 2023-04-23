@@ -19,17 +19,40 @@ class UNet(nn.Module):
         factor = 1
         self.down4 = Down(512, 1024 // factor,img_h//16,img_w//16,gamma = gamma,IN = IN)
         self.down5 = Down(1024, 1024 // factor,img_h//32,img_w//32,gamma = gamma, IN = IN)
-        self.down6 = Down(1024,1024  // factor,gamma = gamma, IN = IN)
-        self.up7 = Up(1024, 1024 // factor, bilinear,conv_channels = 1024,gamma = gamma, IN = IN)
-        self.up6 = Up(1024, 1024 // factor, bilinear,conv_channels = 512,gamma = gamma, IN = IN)
-        self.up1 = Up(1024, 512 // factor, img_h = img_h//8,img_w = img_w//8, bilinear = bilinear,conv_channels = 512,gamma =gamma, IN = IN)
-        self.up2 = Up(512, 256 // factor, img_h = img_h//4,img_w = img_w//4,bilinear = bilinear,conv_channels = 256,gamma = gamma, IN = IN)
-        self.up3 = Up(256, 128 // factor, img_h = img_h//2,img_w = img_w//2,bilinear = bilinear,conv_channels = 128,gamma = gamma, IN = IN)
+        self.down6 = Down(1024,1024  // factor,img_h//64,img_w//64,gamma = gamma, IN = IN)
+        self.up7 = Up(1024, 1024 // factor,img_h = img_h//32,img_w=img_w//32, bilinear=bilinear,conv_channels = 1024,gamma = gamma, IN = IN)
+        self.up6 = Up(1024, 1024 // factor,img_h = img_h//16,img_w=img_w//16,bilinear= bilinear,conv_channels = 512,gamma = gamma, IN = IN)
+        self.up1 = Up(1024, 512 // factor, img_h = img_h//8,img_w = img_w//8, bilinear = bilinear,conv_channels = 512,gamma =gamma, IN = IN)#,coef = 7/4)
+        self.up2 = Up(512, 256 // factor, img_h = img_h//4,img_w = img_w//4,bilinear = bilinear,conv_channels = 256,gamma = gamma, IN = IN)#,coef = 9/5)
+        self.up3 = Up(256, 128 // factor, img_h = img_h//2,img_w = img_w//2,bilinear = bilinear,conv_channels = 128,gamma = gamma, IN = IN)#,coef = 11/6)
         self.up4 = Up(128, 64, img_h = img_h,img_w = img_w,bilinear = bilinear ,conv_channels = 64,gamma = gamma, IN = IN)
         self.outc = OutConv(64, n_classes)
         self.depth = depth
         self.img_h = img_h
         self.img_w = img_w
+    def set_gamma(self,gamma = 1.0):
+        #self.inc.gamma = gamma
+        #self.down1.maxpool_conv[1].gamma = gamma
+        #self.down2.maxpool_conv[1].gamma = gamma
+        #self.down3.maxpool_conv[1].gamma = gamma
+        #self.down4.maxpool_conv[1].gamma = gamma
+        #self.down5.maxpool_conv[1].gamma = gamma
+        #self.down6.maxpool_conv[1].gamma = gamma
+        #self.up7.conv.gamma = gamma
+        #self.up6.conv.gamma = gamma
+        #self.up1.conv.gamma = gamma
+        #self.up2.conv.gamma = gamma
+        #self.up3.conv.gamma = gamma
+        #self.up4.conv.gamma = gamma
+        pass
+    def mult_change(self,b):
+        self.up7.mult = b
+        self.up6.mult = b
+        self.up1.mult = b
+        self.up2.mult = b
+        self.up3.mult = b
+        
+    
     def forward(self, x):
       if self.depth == 7:
         x1 = self.inc(x)

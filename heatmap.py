@@ -7,5 +7,5 @@ import matplotlib.pyplot as plt
 def save_map(list_2d):
   plt.figure()
   sns.heatmap(list_2d,xticklabels = range(2,8,1),yticklabels=range(7, 1, -1),vmin = 0)
-  plt.savefig('seaborn_heatmap_slim-random-IN.png')
+  plt.savefig('LN-2-heatmap-dropout-test.png')
   plt.close('all')
