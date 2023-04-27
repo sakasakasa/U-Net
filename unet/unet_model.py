@@ -6,7 +6,7 @@ from .unet_parts import *
 
 
 class UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=True, depth = 5,img_h = None,img_w = None,gamma = 1.0,IN = True):
+    def __init__(self, n_channels, n_classes, bilinear=True, depth = 5,img_h = None,img_w = None,gamma = 1.0,IN = "BN"):
         super(UNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes

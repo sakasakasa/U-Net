@@ -9,7 +9,7 @@ import logging
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
 
-    def __init__(self, in_channels, out_channels, mid_channels=None,batchnorm = True, gamma = 1.0, img_h =1,img_w = 1, IN = True):
+    def __init__(self, in_channels, out_channels, mid_channels=None,batchnorm = True, gamma = 1.0, img_h =1,img_w = 1, IN = "BN"):
         super().__init__()
         self.gamma = gamma
         self.IN = IN
@@ -19,15 +19,24 @@ class DoubleConv(nn.Module):
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1),
         )
-        self.bn1 = nn.LayerNorm((mid_channels,img_h,img_w))#nn.BatchNorm2d(mid_channels,affine = False,track_running_stats = True) if IN == False else nn.InstanceNorm2d(mid_channels)  
-        #self.bn1 = nn.BatchNorm2d(mid_channels,affine = False,track_running_stats = True) if IN == False else nn.InstanceNorm2d(mid_channels)  
+        if self.IN == "BN":
+            self.bn1 = nn.BatchNorm2d(mid_channels,affine = False,track_running_stats =True)
+        elif self.IN == "IN":
+            self.bn1 = nn.InstanceNorm2d(mid_channels)
+        else:
+            self.bn1 = nn.LayerNorm((mid_channels,img_h,img_w))
         self.relu = nn.ReLU(inplace=False)
         self.conv2 = nn.Sequential(
             nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1),
         )
-        self.bn2 = nn.LayerNorm((out_channels,img_h,img_w))#nn.BatchNorm2d(out_channels,affine = False,track_running_stats =True)if IN == False else nn.InstanceNorm2d(out_channels)
+        #self.bn2 = nn.LayerNorm((out_channels,img_h,img_w))#nn.BatchNorm2d(out_channels,affine = False,track_running_stats =True)if IN == False else nn.InstanceNorm2d(out_channels)
         #self.bn2 = nn.BatchNorm2d(out_channels,affine = False,track_running_stats = True) if IN == False else nn.InstanceNorm2d(out_channels)     
-
+        if self.IN == "BN":
+            self.bn2 = nn.BatchNorm2d(out_channels,affine = False,track_running_stats =True)
+        elif self.IN == "IN":
+            self.bn2 = nn.InstanceNorm2d(out_channels)
+        else:
+            self.bn2 = nn.LayerNorm((out_channels,img_h,img_w))
     def forward(self, x):
         x = x.requires_grad_()
         half_channel = x.shape[1]//2

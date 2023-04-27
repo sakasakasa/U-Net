@@ -26,7 +26,7 @@ from statistics import mean
 dir_checkpoint = 'checkpoints/'
 dir_img = '../CVC-ClinicDB/Original/'#'data/imgs/CVC/'
 dir_mask = '../CVC-ClinicDB/Ground_Truth/'#'data/masks/CVC/'
-depth_list = [2,3,4,5,6,7]
+#depth_list = [2,3,4,5,6,7]
 depth_list_all = [2,3,4,5,6,7]
 feature = [[],[],[],[],[],[]]
 def reshape(x):
@@ -40,7 +40,8 @@ def train_net(net,
               save_cp=True,
               img_scale=0.5,
               gamma=1.0,
-              IN = True
+              IN = True,
+              dropout = False
               ):
 
     dataset = BasicDataset(dir_img, dir_mask, img_scale)
@@ -78,6 +79,7 @@ def train_net(net,
     else:
         criterion = nn.BCEWithLogitsLoss()
         criterion = dice_loss.DiceLoss()
+    sample_depth = 1 if dropout else len(depth_list) 
     for epoch in range(epochs):
         net.train()
         with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{epochs}', unit='img') as pbar:
@@ -202,7 +204,10 @@ def get_args():
                         help='gamma')
     parser.add_argument('-v', '--validation', dest='val', type=float, default=10.0,
                         help='Percent of the data that is used as validation (0-100)')
-    parser.add_argument('--BN', action='store_false', dest = "BN")
+    parser.add_argument('--BN',  dest = "BN",default = "BN")
+    parser.add_argument('--d',  dest = "depth",default = "all")
+    parser.add_argument('--dr',  dest = "dropout",default = False)
+
 
     return parser.parse_args()
 
@@ -224,11 +229,11 @@ if __name__ == '__main__':
     for batch in train_loader:
        size = batch['image'].shape[1:]
        break
-    net = UNet(n_channels=3, n_classes=1, bilinear=True,depth = 5,img_h = size[1],img_w = size[2],gamma = args.gamma)
-    logging.info(f'Network:\n'
-                 f'\t{net.n_channels} input channels\n'
-                 f'\t{net.n_classes} output channels (classes)\n'
-                 f'\t{"Bilinear" if net.bilinear else "Transposed conv"} upscaling')
+    #net = UNet(n_channels=3, n_classes=1, bilinear=True,depth = 5,img_h = size[1],img_w = size[2],gamma = args.gamma)
+    #logging.info(f'Network:\n'
+    #             f'\t{net.n_channels} input channels\n'
+    #             f'\t{net.n_classes} output channels (classes)\n'
+    #             f'\t{"Bilinear" if net.bilinear else "Transposed conv"} upscaling')
 
     if args.load:
         net.load_state_dict(
@@ -236,11 +241,12 @@ if __name__ == '__main__':
         )
         logging.info(f'Model loaded from {args.load}')
     
-    net.to(device=device)
+    #net.to(device=device)
     # faster convolutions, but more memory
     # cudnn.benchmark = True
     result = np.array([])
     scale_result = np.array([])
+    depth_list = [2,3,4,5,6,7] if args.depth == "all" else [int(args.depth)] 
     #feature = [[],[],[],[],[],[]]
     print("start")
     try:
@@ -298,6 +304,7 @@ if __name__ == '__main__':
                   val_percent=args.val / 100,
                   gamma = args.gamma,
                   IN = args.BN
+                  dropout = args.dropout
                   )
     
         #feature_list = [net.up7,net.up6,net.up1,net.up2,net.up3,net.up4]
@@ -334,7 +341,7 @@ if __name__ == '__main__':
                 for index_y in range(6):
                     incremental_cka.increment_cka_score(index_x, index_y, feature[index_x],feature[index_y]
                     )
-      #save_map(incremental_cka.cka()[::-1])
+      save_map(incremental_cka.cka()[::-1],args.BN,args.depth)
       print("finished!!")
       
     except KeyboardInterrupt:

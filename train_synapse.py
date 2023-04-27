@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader, random_split
 import dice_loss
 from torch.utils.data.dataset import Subset
 import cka
-from heatmap import save_map 
+from heatmap import save_map_synapse
 import seaborn as sns
 #dir_img = 'data/imgs/Synapse/train_npz/'
 #dir_mask = 'data/imgs/Synapse/train_npz/'
@@ -38,7 +38,8 @@ def train_net(net,
               lr=0.001,
               val_percent=0.2,
               save_cp=True,
-              img_scale=0.5):
+              img_scale=0.5,
+              dropout = False):
 
     dataset = BasicDataset(dir_img, dir_mask, img_scale)
     num = [117,131,163,149,148,142,96,124,131,88,89,153,93,104,98,99,90,195]
@@ -54,6 +55,8 @@ def train_net(net,
       sum_num += int(num[i])
     train_list = [int(i) for i in train_list]
     n_train = len(train_list)
+    sample_depth = 1 if dropout else len(depth_list)
+
     for i in range(10,16):
       count = 0
       for j in range(num[i]):
@@ -112,8 +115,9 @@ def train_net(net,
                 mask_type = torch.float32 if net.n_classes == 1 else torch.long
                 true_masks = true_masks.to(device=device, dtype=mask_type)
                 
-                for i in range(len(depth_list)):
+                for i in range(sample_depth):
                   net.depth = depth_list[i]
+                  #print(net.depth)
                   masks_pred = net(imgs)
  
                   loss = criterion(masks_pred, true_masks)#+(1E-8)*criterion2(teacher,student)
@@ -169,6 +173,11 @@ def get_args():
                         help='gamma')
     parser.add_argument('-v', '--validation', dest='val', type=float, default=10.0,
                         help='Percent of the data that is used as validation (0-100)')
+    parser.add_argument('--BN',  dest = "BN",default = "BN")
+    parser.add_argument('--d',  dest = "depth",default = "all")
+    parser.add_argument('--dr',  dest = "dropout",default = False)
+
+
 
     return parser.parse_args()
 
@@ -191,28 +200,30 @@ if __name__ == '__main__':
     for batch in train_loader:
        size = batch['image'].shape[1:]
        break
-    net = UNet(n_channels=1, n_classes=1, bilinear=True,depth = 5,img_h = size[1],img_w = size[2])
-    logging.info(f'Network:\n'
-                 f'\t{net.n_channels} input channels\n'
-                 f'\t{net.n_classes} output channels (classes)\n'
-                 f'\t{"Bilinear" if net.bilinear else "Transposed conv"} upscaling')
-
+    #net = UNet(n_channels=1, n_classes=1, bilinear=True,depth = 5,img_h = size[1],img_w = size[2])
+    #logging.info(f'Network:\n'
+    #             f'\t{net.n_channels} input channels\n#'
+    #             f'\t{net.n_classes} output channels (classes)\n'
+    #            f'\t{"Bilinear" if net.bilinear else "Transposed conv"} upscaling')
+    """
     if args.load:
         net.load_state_dict(
             torch.load(args.load, map_location=device)
         )
         logging.info(f'Model loaded from {args.load}')
-    
-    net.to(device=device)
+    """
+    #net.to(device=device)
     # faster convolutions, but more memory
     # cudnn.benchmark = True
     result = np.array([])
     scale_result = np.array([])
+    depth_list = [2,3,4,5,6,7] if args.depth == "all" else [int(args.depth)]
+
     #feature = np.array([[],[],[],[],[],[]])
     try:
       for i in range(1):
         #depth_list = [2,3,4,5,6,7]
-        net = UNet(n_channels=1, n_classes=1, bilinear=True,depth = 5,img_h = size[1],img_w = size[2],gamma = args.gamma) 
+        net = UNet(n_channels=1, n_classes=1, bilinear=True,depth = 5,img_h = size[1],img_w = size[2],gamma = args.gamma,IN= args.BN) 
         net.to(device=device)
         new_result =  train_net(net=net,
                   epochs=args.epochs,
@@ -220,7 +231,8 @@ if __name__ == '__main__':
                   lr=args.lr,
                   device=device,
                   img_scale=args.scale,
-                  val_percent=args.val / 100)
+                  val_percent=args.val / 100,
+                  dropout = args.dropout)
         feature_list = [net.up7,net.up6,net.up1,net.up2,net.up3,net.up4]
         feature_down = [net.down1,net.down2,net.down3,net.down4,net.down5,net.down6]
         def feature_func(num):
@@ -244,7 +256,7 @@ if __name__ == '__main__':
                 for index_y in range(6):
                     incremental_cka.increment_cka_score(index_x, index_y, feature[index_x],feature[index_y]
                     )
-      save_map(incremental_cka.cka()[::-1])
+      save_map_synapse(incremental_cka.cka()[::-1],args.BN,args.depth)
       print("finished!!")
       
     except KeyboardInterrupt:
